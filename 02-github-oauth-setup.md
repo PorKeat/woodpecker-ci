@@ -58,8 +58,8 @@ Key                   Value
 access                vpn-only
 admin_user            PorKeat
 created_at            ...
-github_client_id      Iv1.xxxxxxxxxxxx
-github_client_secret  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+github_client_id      Ov23lia9YFRFXGSycBne
+github_client_secret  a3700e5a07f31ee898f9c050d6798d7abcfc7c46
 rpc_secret            c9ecc71b30612bfc502165628a06d9d7612663536d9662ab4e0b2dc839356f43
 url                   https://10.1.16.200/woodpecker
 ```
