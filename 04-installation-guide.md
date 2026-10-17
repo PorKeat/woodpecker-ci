@@ -238,7 +238,7 @@ spec:
           service:
             name: woodpecker-server
             port:
-              number: 8000
+              number: 80
   tls:
   - secretName: argocd-tls
 EOF
