@@ -35,3 +35,93 @@ spec:
               number: 80
   tls:
   - secretName: argocd-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-vpn-only
+  namespace: argocd
+spec:
+  ipAllowList:
+    sourceRange:
+      - 10.0.0.0/8
+      - 100.64.0.0/10
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - 127.0.0.1/32
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
+    traefik.ingress.kubernetes.io/router.middlewares: "argocd-argocd-vpn-only@kubernetescrd"
+spec:
+  ingressClassName: traefik
+  rules:
+  - http:
+      paths:
+      - path: /argocd
+        pathType: Prefix
+        backend:
+          service:
+            name: argo-argocd-server
+            port:
+              number: 80
+  tls:
+  - secretName: argocd-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-reset-headers
+  namespace: argocd
+spec:
+  headers:
+    customResponseHeaders:
+      Clear-Site-Data: "\"cookies\""
+      Set-Cookie: "argocd.token=deleted; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-reset-redirect
+  namespace: argocd
+spec:
+  redirectRegex:
+    regex: ".*"
+    replacement: "/argocd"
+    permanent: false
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-reset-ingress
+  namespace: argocd
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
+    traefik.ingress.kubernetes.io/router.middlewares: "argocd-argocd-reset-headers@kubernetescrd,argocd-argocd-reset-redirect@kubernetescrd"
+    traefik.ingress.kubernetes.io/router.priority: "1"
+spec:
+  ingressClassName: traefik
+  rules:
+  - http:
+      paths:
+      - path: /reset
+        pathType: Prefix
+        backend:
+          service:
+            name: argo-argocd-server
+            port:
+              number: 80
+      - path: /
+        pathType: Exact
+        backend:
+          service:
+            name: argo-argocd-server
+            port:
+              number: 80
+  tls:
+  - secretName: argocd-tls
