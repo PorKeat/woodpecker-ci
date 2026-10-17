@@ -1,0 +1,36 @@
+# .woodpecker.yaml for Go / Microservices
+when:
+  event: [push]
+  branch: main
+
+steps:
+  - name: test
+    image: golang:1.22-alpine
+    commands:
+      - go vet ./...
+      - go test -v -race ./...
+
+  - name: kaniko-build
+    image: gcr.io/kaniko-project/executor:v1.23.2-debug
+    commands:
+      - /kaniko/executor \
+          --context=dir://. \
+          --dockerfile=Dockerfile \
+          --destination=ghcr.io/porkeat/go-service:${CI_COMMIT_SHA:0:7}
+    environment:
+      DOCKER_CONFIG:
+        from_secret: docker_config
+
+  - name: gitops-bump
+    image: alpine/git:v2.45.2
+    commands:
+      - git config --global user.name "Woodpecker CI"
+      - git config --global user.email "ci@local"
+      - git clone https://$$GITHUB_TOKEN@github.com/PorKeat/gitops-deployments.git
+      - cd gitops-deployments
+      - sed -i "s|image: ghcr.io/porkeat/go-service:.*|image: ghcr.io/porkeat/go-service:${CI_COMMIT_SHA:0:7}|g" apps/go-service/deployment.yaml
+      - git commit -am "chore(release): bump go-service to ${CI_COMMIT_SHA:0:7} [skip ci]"
+      - git push origin main
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
