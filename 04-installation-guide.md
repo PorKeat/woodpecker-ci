@@ -70,12 +70,14 @@ global:
 configs:
   params:
     server.insecure: true
+    server.basehref: "/argocd"
+    server.rootpath: "/argocd"
   cm:
-    url: "https://10.1.16.200"
+    url: "https://10.1.16.200/argocd"
     admin.enabled: "true"
   secret:
-    # Pre-computed bcrypt hash of: ArgoAdmin2026SecOps!
-    argocdServerAdminPassword: "$2b$12$pIVPmWwcD4bX6DET4PLzrOsB5S/yEfnhQUW5PAbaFmF8ON5iJTHHO"
+    # Pre-computed bcrypt hash of: SJh7RxGCn0EAz5FRvSWLC_dYY-AA
+    argocdServerAdminPassword: "$2a$10$iOH60jL/wI.sukHDt117o.MGLMATFPzjdUCfVTbqCBScrMU9M7PKi"
 
 server:
   replicas: 1
@@ -125,7 +127,7 @@ spec:
   rules:
   - http:
       paths:
-      - path: /
+      - path: /argocd
         pathType: Prefix
         backend:
           service:
@@ -138,10 +140,10 @@ EOF
 ```
 
 ### 1.6 Verify ArgoCD
-1. Open [https://10.1.16.200](https://10.1.16.200) in your browser while connected to VPN.
+1. Open [https://10.1.16.200/argocd](https://10.1.16.200/argocd) in your browser while connected to VPN.
 2. Sign in with:
    - **Username:** `admin`
-   - **Password:** `ArgoAdmin2026SecOps!`
+   - **Password:** `SJh7RxGCn0EAz5FRvSWLC_dYY-AA`
 
 ---
 

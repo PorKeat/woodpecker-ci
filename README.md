@@ -1,6 +1,6 @@
 # Woodpecker CI + ArgoCD GitOps Documentation
 
-A production-grade, lightweight, and secure CI/CD platform running natively on Kubernetes (`Node1-3`), integrated with HashiCorp Vault (`10.1.18.8`) and protected behind Traefik VPN-only Ingress (`10.1.16.200`).
+A production-grade, lightweight, and secure CI/CD platform running natively on Kubernetes (`Node1-3`), integrated with HashiCorp Vault (`10.1.18.8`) and protected behind Traefik VPN-only Ingress (`https://10.1.16.200/argocd` and `https://10.1.16.200/woodpecker`).
 
 ---
 

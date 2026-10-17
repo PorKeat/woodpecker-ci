@@ -11,10 +11,10 @@ All CI/CD credentials are stored in the Version 2 KV secrets engine at `secret/d
 ```
 secret/
   ├── argocd/
-  │     ├── url: "https://10.1.16.200"
+  │     ├── url: "https://10.1.16.200/argocd"
   │     ├── admin_user: "admin"
-  │     ├── admin_password: "ArgoAdmin2026SecOps!"
-  │     ├── admin_password_bcrypt: "$2b$12$pIVPmWwcD4bX6DET4PLzrOsB5S/yEfnhQUW5PAbaFmF8ON5iJTHHO"
+  │     ├── admin_password: "SJh7RxGCn0EAz5FRvSWLC_dYY-AA"
+  │     ├── admin_password_bcrypt: "$2a$10$iOH60jL/wI.sukHDt117o.MGLMATFPzjdUCfVTbqCBScrMU9M7PKi"
   │     └── access: "vpn-only"
   │
   └── woodpecker/
