@@ -1,30 +1,49 @@
-# Production Helm values for Woodpecker CI
+# Production 100% Vault-Native Helm Values for Woodpecker CI
 server:
   enabled: true
   replicaCount: 1
   image:
     repository: woodpeckerci/woodpecker-server
-    tag: "v3.19.0"
+    tag: v3.19.0
+  podAnnotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/agent-vault-addr: "https://10.1.18.8:8200"
+    vault.hashicorp.com/tls-skip-verify: "true"
+    vault.hashicorp.com/role: "woodpecker-role"
+    vault.hashicorp.com/agent-inject-secret-woodpecker.env: "secret/data/woodpecker"
+    vault.hashicorp.com/agent-inject-template-woodpecker.env: |
+      {{- with secret "secret/data/woodpecker" -}}
+      export WOODPECKER_SERVER_RPC_SECRET="{{ .Data.data.rpc_secret }}"
+      export WOODPECKER_GITHUB_CLIENT="{{ .Data.data.github_client_id }}"
+      export WOODPECKER_GITHUB_SECRET="{{ .Data.data.github_client_secret }}"
+      {{- end -}}
   env:
     WOODPECKER_HOST: "https://10.1.16.200/woodpecker"
     WOODPECKER_SERVER_ADDR: ":8000"
     WOODPECKER_SERVER_RPC_ADDR: ":9000"
     WOODPECKER_ROOT_URL: "/woodpecker"
-    WOODPECKER_SERVER_RPC_SECRET: "c9ecc71b30612bfc502165628a06d9d7612663536d9662ab4e0b2dc839356f43"
     WOODPECKER_ADMIN: "PorKeat"
     WOODPECKER_GITHUB: "true"
-    WOODPECKER_GITHUB_CLIENT: "Ov23lia9YFRFXGSycBne"
-    WOODPECKER_GITHUB_SECRET: "a3700e5a07f31ee898f9c050d6798d7abcfc7c46"
+    WOODPECKER_OPEN: "false"
 
 agent:
   enabled: true
   replicaCount: 1
   image:
     repository: woodpeckerci/woodpecker-agent
-    tag: "v3.19.0"
+    tag: v3.19.0
+  podAnnotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/agent-vault-addr: "https://10.1.18.8:8200"
+    vault.hashicorp.com/tls-skip-verify: "true"
+    vault.hashicorp.com/role: "woodpecker-role"
+    vault.hashicorp.com/agent-inject-secret-woodpecker.env: "secret/data/woodpecker"
+    vault.hashicorp.com/agent-inject-template-woodpecker.env: |
+      {{- with secret "secret/data/woodpecker" -}}
+      export WOODPECKER_SERVER_RPC_SECRET="{{ .Data.data.rpc_secret }}"
+      {{- end -}}
   env:
     WOODPECKER_SERVER: "woodpecker-server:9000"
-    WOODPECKER_SERVER_RPC_SECRET: "c9ecc71b30612bfc502165628a06d9d7612663536d9662ab4e0b2dc839356f43"
     WOODPECKER_BACKEND: "kubernetes"
     WOODPECKER_BACKEND_K8S_NAMESPACE: "woodpecker"
     WOODPECKER_BACKEND_K8S_STORAGE_CLASS: "longhorn"

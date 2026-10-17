@@ -1,12 +1,14 @@
 # 03 — HashiCorp Vault Integration
 
-Your infrastructure includes a dedicated HashiCorp Vault cluster running on VM `10.1.18.8` (Vault 2.1.0, Shamir 5-shares/threshold-3 unsealed). The Kubernetes cluster (`Node1-3`) runs the **Vault Agent Injector** (`vault-system` namespace), which allows pods to read secrets directly from Vault without hardcoding them in Git.
+The CI/CD platform is 100% **Vault-Native**. No secrets, passwords, RPC tokens, or OAuth credentials are saved in Kubernetes `values.yaml` files, ConfigMaps, or Git repositories.
+
+All secrets are maintained in **HashiCorp Vault** on `10.1.18.8` and dynamically injected into running pods at boot time via the **Vault Agent Sidecar Injector** (`vault-system`).
 
 ---
 
 ## 1. Vault Secret Hierarchy
 
-All CI/CD credentials are stored in the Version 2 KV secrets engine at `secret/data/`:
+All CI/CD secrets reside in the Version 2 KV secrets engine under `secret/data/`:
 
 ```
 secret/
@@ -21,86 +23,116 @@ secret/
         ├── url: "https://10.1.16.200/woodpecker"
         ├── admin_user: "PorKeat"
         ├── rpc_secret: "c9ecc71b30612bfc502165628a06d9d7612663536d9662ab4e0b2dc839356f43"
-        ├── github_client_id: "<your_client_id>"
-        ├── github_client_secret: "<your_client_secret>"
+        ├── github_client_id: "Ov23lia9YFRFXGSycBne"
+        ├── github_client_secret: "a3700e5a07f31ee898f9c050d6798d7abcfc7c46"
         └── access: "vpn-only"
 ```
 
 ---
 
-## 2. Managing Secrets via Vault CLI
+## 2. Vault Security Policies & Roles (Configured on 10.1.18.8)
 
-Run these commands on the **Vault VM** (`ssh Vault` or `10.1.18.8`):
-
-### View Stored ArgoCD Credentials
+### Woodpecker CI Policy & Role
+```hcl
+# Policy: woodpecker-policy
+path "secret/data/woodpecker" {
+  capabilities = ["read"]
+}
+```
+Bound to ServiceAccounts `woodpecker-agent`, `default`, `woodpecker-server` in namespace `woodpecker`:
 ```bash
-vault kv get secret/argocd
+vault write auth/kubernetes/role/woodpecker-role \
+  bound_service_account_names="woodpecker-agent,default,woodpecker-server" \
+  bound_service_account_namespaces="woodpecker" \
+  policies="woodpecker-policy" \
+  audience="https://kubernetes.default.svc.cluster.local" \
+  ttl="24h"
 ```
 
-### View Stored Woodpecker Credentials
-```bash
-vault kv get secret/woodpecker
+### ArgoCD Policy & Role
+```hcl
+# Policy: argocd-policy
+path "secret/data/argocd" {
+  capabilities = ["read"]
+}
 ```
-
-### Update / Patch Credentials
+Bound to ServiceAccount `argocd-server` in namespace `argocd`:
 ```bash
-# Update Woodpecker's GitHub OAuth credentials
-vault kv patch secret/woodpecker \
-  github_client_id="<NEW_CLIENT_ID>" \
-  github_client_secret="<NEW_CLIENT_SECRET>"
-
-# Update ArgoCD admin password
-vault kv patch secret/argocd \
-  admin_password="<NEW_PASSWORD>" \
-  admin_password_bcrypt="<NEW_BCRYPT_HASH>"
-```
-
-### Read a Single Field Programmatically
-```bash
-# Fetch just the ArgoCD admin password
-ARGOCD_PASS=$(vault kv get -field=admin_password secret/argocd)
-
-# Fetch just the Woodpecker RPC secret
-RPC_SECRET=$(vault kv get -field=rpc_secret secret/woodpecker)
+vault write auth/kubernetes/role/argocd-role \
+  bound_service_account_names="argocd-server,default,argo-argocd-server" \
+  bound_service_account_namespaces="argocd" \
+  policies="argocd-policy" \
+  audience="https://kubernetes.default.svc.cluster.local" \
+  ttl="24h"
 ```
 
 ---
 
-## 3. Dynamic Secret Injection into Kubernetes Pods
+## 3. How the Vault Agent Sidecar Works in Kubernetes
 
-Because the **Vault Agent Injector** is active in the cluster, any Kubernetes deployment can dynamically mount secrets into `/vault/secrets/` as an in-memory volume.
+Each pod is annotated with Vault Agent annotations. When Kubernetes schedules the pod:
 
-### Example: Injecting Vault Secrets into a Pod
+1. The **Vault Agent Injector** (`vault-system`) injects two containers:
+   - `vault-agent-init` (initContainer)
+   - `vault-agent` (sidecar container)
+2. The sidecar securely contacts `https://10.1.18.8:8200` using the pod's projected Kubernetes ServiceAccount token (`/var/run/secrets/kubernetes.io/serviceaccount/token`).
+3. Vault verifies the token against the Kubernetes API, checks the policy, and issues a leased token.
+4. The sidecar renders an in-memory `tmpfs` volume (`/vault/secrets/`) containing the decrypted secrets.
+5. In-memory secrets are never persisted to disk or etcd.
+
+---
+
+## 4. Pod Annotations Reference
+
+### Woodpecker CI Server Annotations:
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: sample-app
-  namespace: default
-spec:
-  template:
-    metadata:
-      annotations:
-        # Enable the Vault agent sidecar injector
-        vault.hashicorp.com/agent-inject: 'true'
-        vault.hashicorp.com/role: 'kubernetes'
-        # Read from Vault secret/data/woodpecker
-        vault.hashicorp.com/agent-inject-secret-config: 'secret/data/woodpecker'
-        # Format the output inside the pod
-        vault.hashicorp.com/agent-inject-template-config: |
-          {{- with secret "secret/data/woodpecker" -}}
-          export WOODPECKER_RPC_SECRET="{{ .Data.data.rpc_secret }}"
-          export WOODPECKER_ADMIN="{{ .Data.data.admin_user }}"
-          {{- end -}}
-    spec:
-      containers:
-        - name: app
-          image: my-image:latest
-          command: ["/bin/sh", "-c"]
-          args: ["source /vault/secrets/config && ./start-service"]
+podAnnotations:
+  vault.hashicorp.com/agent-inject: "true"
+  vault.hashicorp.com/agent-vault-addr: "https://10.1.18.8:8200"
+  vault.hashicorp.com/tls-skip-verify: "true"
+  vault.hashicorp.com/role: "woodpecker-role"
+  vault.hashicorp.com/agent-inject-secret-woodpecker.env: "secret/data/woodpecker"
+  vault.hashicorp.com/agent-inject-template-woodpecker.env: |
+    {{- with secret "secret/data/woodpecker" -}}
+    export WOODPECKER_SERVER_RPC_SECRET="{{ .Data.data.rpc_secret }}"
+    export WOODPECKER_GITHUB_CLIENT="{{ .Data.data.github_client_id }}"
+    export WOODPECKER_GITHUB_SECRET="{{ .Data.data.github_client_secret }}"
+    {{- end -}}
 ```
 
-### Benefits:
-- **Zero Plaintext Secrets in Git:** Manifests stored in Git only contain the annotation pointer `secret/data/...`.
-- **Automatic Secret Rotation:** If a secret is updated in Vault, the injector refreshes the mounted file inside the pod automatically.
-- **Auditing:** Vault maintains an audit log of every token, pod, and service account that accessed secrets.
+### ArgoCD Server Annotations:
+```yaml
+podAnnotations:
+  vault.hashicorp.com/agent-inject: "true"
+  vault.hashicorp.com/agent-vault-addr: "https://10.1.18.8:8200"
+  vault.hashicorp.com/tls-skip-verify: "true"
+  vault.hashicorp.com/role: "argocd-role"
+  vault.hashicorp.com/agent-inject-secret-argocd.env: "secret/data/argocd"
+  vault.hashicorp.com/agent-inject-template-argocd.env: |
+    {{- with secret "secret/data/argocd" -}}
+    export ARGOCD_ADMIN_PASSWORD="{{ .Data.data.admin_password }}"
+    export ARGOCD_ADMIN_PASSWORD_BCRYPT="{{ .Data.data.admin_password_bcrypt }}"
+    {{- end -}}
+```
+
+---
+
+## 5. Verifying Vault Secrets & Sidecars
+
+### Inspect Injected Secret in Running Woodpecker Pod:
+```bash
+kubectl exec -n woodpecker woodpecker-server-0 -c vault-agent -- cat /vault/secrets/woodpecker.env
+```
+
+### Inspect Injected Secret in Running ArgoCD Pod:
+```bash
+kubectl exec -n argocd deploy/argo-argocd-server -c vault-agent -- cat /vault/secrets/argocd.env
+```
+
+### Rotate Secrets in Vault:
+Whenever you update a secret in Vault:
+```bash
+vault kv patch secret/woodpecker ...
+vault kv patch secret/argocd ...
+```
+The Vault Agent sidecar automatically detects the secret change in Vault and refreshes the in-memory `/vault/secrets/` file in real-time without restarting the pod.
