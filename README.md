@@ -58,3 +58,25 @@ A production-grade, lightweight, and secure CI/CD platform running natively on K
 - **Least-Privilege CI:** Woodpecker CI **never** receives Kubernetes cluster admin credentials. It only commits the new image tag to Git. Only ArgoCD touches the cluster.
 - **Centralized Vault Storage:** All admin passwords, pre-computed bcrypt hashes, and RPC encryption secrets are persisted in HashiCorp Vault on `10.1.18.8`.
 - **Pinned Secure Versions:** All container images use audited, immutable tags (ArgoCD `v3.5.5`, Woodpecker `v3.19.0`, Kaniko `v1.23.2-debug`).
+
+---
+
+## 🌐 Connected Kubernetes Clusters (Multi-Cluster GitOps)
+
+ArgoCD is configured as a centralized management plane controlling multiple downstream Kubernetes clusters:
+
+| Cluster Name | API Server URL | Description / Workloads |
+| :--- | :--- | :--- |
+| `in-cluster` | `https://kubernetes.default.svc` | Local cluster (`Node1-3`, Traefik VIP `10.1.16.200`) hosting ArgoCD & Woodpecker CI |
+| `mail-cluster` | `https://10.1.15.11:6443` | 3-node cluster (`k8s-1` to `k8s-3` on `10.1.15.11-13`) for Mail services |
+| `api-gateway-cluster` | `https://10.1.18.4:6443` | 3-node cluster (`api-gateway1` to `3` on `10.1.18.4,12,13`) for API Gateway services |
+| `jitsi-meet-cluster` | `https://10.1.18.10:6443` | 3-node cluster (`jitsi-meet1` to `3` on `10.1.18.9-11`) for Video Conferencing |
+
+### Deploying an Application to a Specific Cluster:
+In your ArgoCD `Application` manifest, target any cluster by its friendly name:
+```yaml
+spec:
+  destination:
+    name: mail-cluster        # Or: api-gateway-cluster, jitsi-meet-cluster, in-cluster
+    namespace: default
+```
