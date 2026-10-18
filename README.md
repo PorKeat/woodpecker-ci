@@ -1,11 +1,11 @@
 # 🚀 Woodpecker CI + ArgoCD GitOps
 
-A lightweight, secure CI/CD system running on Kubernetes, integrated with HashiCorp Vault, and exposed at **[https://woodpecker.unity-workspace.com/](https://woodpecker.unity-workspace.com/)**.
+A lightweight, secure CI/CD platform running natively on Kubernetes, integrated with HashiCorp Vault, and accessible at **[https://woodpecker.unity-workspace.com/](https://woodpecker.unity-workspace.com/)**.
 
 ---
 
 ## ⚡ Quick Start
-Want to set it up fast? Follow the **[3-Minute Quick Setup Guide](docs/00-quick-setup.md)**.
+Want to deploy in 3 minutes? Follow the **[Quick Setup Guide](docs/00-quick-setup.md)**.
 
 ---
 
@@ -13,27 +13,36 @@ Want to set it up fast? Follow the **[3-Minute Quick Setup Guide](docs/00-quick-
 
 ```text
 woodpecker-ci/
-├── docs/                                 # 📖 Step-by-Step Documentation
+├── docs/                                 # 📖 Documentation Guides
 │   ├── 00-quick-setup.md                 # ⚡ 3-Minute setup guide
-│   ├── 01-architecture-and-concepts.md   # System design & how it works
+│   ├── 01-architecture-and-concepts.md   # Architectural design & how it works
 │   ├── 02-github-oauth-setup.md          # GitHub OAuth setup guide
 │   ├── 03-vault-integration.md           # HashiCorp Vault secrets integration
 │   ├── 04-installation-guide.md          # Full manual installation guide
 │   ├── 05-pipeline-syntax-guide.md       # .woodpecker.yaml syntax & Kaniko builds
 │   └── 06-user-and-admin-management.md   # 👤 WOODPECKER_ADMIN, ORGS & team permissions
 │
-├── manifests/                            # 📦 Production Kubernetes Manifests (In apply order)
-│   ├── woodpecker/
+├── manifests/                            # 📦 Production Kubernetes Manifests
+│   ├── woodpecker/                       # Woodpecker CI Server & Agent
 │   │   ├── 01-namespace.yaml             # Namespace 'woodpecker'
 │   │   ├── 02-vpn-middleware.yaml        # Traefik IP allowlist
-│   │   ├── 03-helm-values.yaml           # Pinned production Helm values
-│   │   └── 04-ingress.yaml               # Traefik Ingress (root / and /woodpecker)
-│   └── argocd/
-│       ├── 01-namespace.yaml             # Namespace 'argocd'
-│       ├── 02-vpn-middleware.yaml        # Traefik IP allowlist
-│       ├── 03-helm-values.yaml           # Pinned ArgoCD Helm values
-│       ├── 04-ingress.yaml               # Traefik Ingress & Webhook route
-│       └── 05-application.yaml           # Multi-cluster GitOps Application
+│   │   ├── 03-service.yaml               # ClusterIP & Headless Services
+│   │   ├── 04-deployment.yaml            # Server & Agent StatefulSets
+│   │   ├── 05-ingress.yaml               # Traefik Ingress (root / and /woodpecker)
+│   │   └── helm-values.yaml              # Production Helm values alternative
+│   │
+│   ├── argocd/                           # ArgoCD GitOps Engine
+│   │   ├── 01-namespace.yaml             # Namespace 'argocd'
+│   │   ├── 02-vpn-middleware.yaml        # Traefik IP allowlist
+│   │   ├── 03-helm-values.yaml           # Pinned ArgoCD Helm values
+│   │   ├── 04-ingress.yaml               # Traefik Ingress & Webhook route
+│   │   └── 05-application.yaml           # Multi-cluster GitOps Application
+│   │
+│   └── sample-app/                       # Sample App Service & Deployment (UMail Admin)
+│       ├── 01-namespace.yaml             # Namespace 'admin'
+│       ├── 02-deployment.yaml            # 2 Replicas, rollingUpdate, probes, secrets
+│       ├── 03-service.yaml               # ClusterIP Service (port 80 -> 3000)
+│       └── 04-ingressroute.yaml          # Traefik IngressRoute with TLS
 │
 └── examples/                             # 💡 Pipeline Templates
     ├── .woodpecker-golang.yaml           # Go build & test pipeline

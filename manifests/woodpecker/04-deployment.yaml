@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: woodpecker-server
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/name: server
+    app.kubernetes.io/instance: woodpecker
+spec:
+  serviceName: woodpecker-server-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: server
+      app.kubernetes.io/instance: woodpecker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: server
+        app.kubernetes.io/instance: woodpecker
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-vault-addr: "https://10.1.18.8:8200"
+        vault.hashicorp.com/tls-skip-verify: "true"
+        vault.hashicorp.com/role: "woodpecker-role"
+        vault.hashicorp.com/agent-inject-secret-woodpecker.env: "secret/data/woodpecker"
+        vault.hashicorp.com/agent-inject-template-woodpecker.env: |
+          {{- with secret "secret/data/woodpecker" -}}
+          export WOODPECKER_SERVER_RPC_SECRET="{{ .Data.data.rpc_secret }}"
+          export WOODPECKER_GITHUB_CLIENT="{{ .Data.data.github_client_id }}"
+          export WOODPECKER_GITHUB_SECRET="{{ .Data.data.github_client_secret }}"
+          {{- end -}}
+    spec:
+      containers:
+      - name: server
+        image: docker.io/woodpeckerci/woodpecker-server:v3.19.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: grpc
+          containerPort: 9000
+          protocol: TCP
+        env:
+        - name: WOODPECKER_HOST
+          value: "https://woodpecker.unity-workspace.com"
+        - name: WOODPECKER_SERVER_ADDR
+          value: ":8000"
+        - name: WOODPECKER_SERVER_RPC_ADDR
+          value: ":9000"
+        - name: WOODPECKER_ADMIN
+          value: "PorKeat"
+        - name: WOODPECKER_GITHUB
+          value: "true"
+        - name: WOODPECKER_OPEN
+          value: "false"
+        - name: WOODPECKER_ORGS
+          value: "unity-workspace-org"
+        envFrom:
+        - secretRef:
+            name: woodpecker-default-agent-secret
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/woodpecker
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: longhorn
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: woodpecker-agent
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: woodpecker
+spec:
+  serviceName: woodpecker-agent
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agent
+      app.kubernetes.io/instance: woodpecker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: agent
+        app.kubernetes.io/instance: woodpecker
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-vault-addr: "https://10.1.18.8:8200"
+        vault.hashicorp.com/tls-skip-verify: "true"
+        vault.hashicorp.com/role: "woodpecker-role"
+        vault.hashicorp.com/agent-inject-secret-woodpecker.env: "secret/data/woodpecker"
+        vault.hashicorp.com/agent-inject-template-woodpecker.env: |
+          {{- with secret "secret/data/woodpecker" -}}
+          export WOODPECKER_SERVER_RPC_SECRET="{{ .Data.data.rpc_secret }}"
+          {{- end -}}
+    spec:
+      serviceAccountName: woodpecker-agent
+      containers:
+      - name: agent
+        image: docker.io/woodpeckerci/woodpecker-agent:v3.19.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: WOODPECKER_SERVER
+          value: "woodpecker-server:9000"
+        - name: WOODPECKER_BACKEND
+          value: "kubernetes"
+        - name: WOODPECKER_BACKEND_K8S_NAMESPACE
+          value: "woodpecker"
+        - name: WOODPECKER_BACKEND_K8S_STORAGE_CLASS
+          value: "longhorn"
+        - name: WOODPECKER_BACKEND_K8S_VOLUME_SIZE
+          value: "10G"
+        - name: WOODPECKER_CONNECT_RETRY_COUNT
+          value: "1"
+        envFrom:
+        - secretRef:
+            name: woodpecker-default-agent-secret
+        volumeMounts:
+        - name: agent-config
+          mountPath: /etc/woodpecker
+  volumeClaimTemplates:
+  - metadata:
+      name: agent-config
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

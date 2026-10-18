@@ -1,0 +1,31 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: umail-admin-https
+  namespace: admin
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`admin.unity-workspace.com`) || Host(`umail-admin.unity-workspace.com`)
+      kind: Rule
+      services:
+        - name: umail-admin
+          port: 80
+  tls:
+    secretName: webmail-unity-workspace-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: umail-admin-http
+  namespace: admin
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`admin.unity-workspace.com`) || Host(`umail-admin.unity-workspace.com`)
+      kind: Rule
+      services:
+        - name: umail-admin
+          port: 80
