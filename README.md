@@ -9,11 +9,6 @@
 [![HashiCorp Vault](https://img.shields.io/badge/Vault-v2.1.0-000000?style=for-the-badge&logo=vault&logoColor=white)](https://10.1.18.8:8200)
 [![Traefik](https://img.shields.io/badge/Traefik-v3.0+-24A1C1?style=for-the-badge&logo=traefikproxy&logoColor=white)](https://traefik.io/)
 
-<br/>
-
-**Production Woodpecker Dashboard:**  
-👉 **[https://woodpecker.unity-workspace.com/](https://woodpecker.unity-workspace.com/)** 👈
-
 </div>
 
 ---
