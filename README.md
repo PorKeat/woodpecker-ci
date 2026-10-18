@@ -1,6 +1,11 @@
-# Woodpecker CI + ArgoCD GitOps Documentation
+# 🚀 Woodpecker CI + ArgoCD GitOps
 
-A production-grade, lightweight, and secure CI/CD platform running natively on Kubernetes (`Node1-3`), integrated with HashiCorp Vault (`10.1.18.8`) and exposed at **[https://woodpecker.unity-workspace.com/](https://woodpecker.unity-workspace.com/)**.
+A lightweight, secure CI/CD system running on Kubernetes, integrated with HashiCorp Vault, and exposed at **[https://woodpecker.unity-workspace.com/](https://woodpecker.unity-workspace.com/)**.
+
+---
+
+## ⚡ Quick Start
+Want to set it up fast? Follow the **[3-Minute Quick Setup Guide](docs/00-quick-setup.md)**.
 
 ---
 
@@ -8,46 +13,50 @@ A production-grade, lightweight, and secure CI/CD platform running natively on K
 
 ```text
 woodpecker-ci/
-├── docs/                                 # 📖 Documentation Guides
-│   ├── 01-architecture-and-concepts.md   # Architectural overview & components
-│   ├── 02-github-oauth-setup.md          # GitHub OAuth application setup
-│   ├── 03-vault-integration.md           # HashiCorp Vault secrets injection
-│   ├── 04-installation-guide.md          # Step-by-step Helm installation guide
+├── docs/                                 # 📖 Step-by-Step Documentation
+│   ├── 00-quick-setup.md                 # ⚡ 3-Minute setup guide
+│   ├── 01-architecture-and-concepts.md   # System design & how it works
+│   ├── 02-github-oauth-setup.md          # GitHub OAuth setup guide
+│   ├── 03-vault-integration.md           # HashiCorp Vault secrets integration
+│   ├── 04-installation-guide.md          # Full manual installation guide
 │   ├── 05-pipeline-syntax-guide.md       # .woodpecker.yaml syntax & Kaniko builds
-│   └── 06-user-and-admin-management.md   # WOODPECKER_ADMIN, ORGS & team permissions
+│   └── 06-user-and-admin-management.md   # 👤 WOODPECKER_ADMIN, ORGS & team permissions
 │
-├── manifests/                            # 📦 Production Kubernetes Manifests
+├── manifests/                            # 📦 Production Kubernetes Manifests (In apply order)
 │   ├── woodpecker/
-│   │   ├── values.yaml                   # Pinned Woodpecker Helm values
-│   │   └── ingress.yaml                  # Traefik Ingress (root / and /woodpecker)
+│   │   ├── 01-namespace.yaml             # Namespace 'woodpecker'
+│   │   ├── 02-vpn-middleware.yaml        # Traefik IP allowlist
+│   │   ├── 03-helm-values.yaml           # Pinned production Helm values
+│   │   └── 04-ingress.yaml               # Traefik Ingress (root / and /woodpecker)
 │   └── argocd/
-│       ├── values.yaml                   # Pinned ArgoCD Helm values
-│       ├── ingress.yaml                  # Traefik Ingress & Webhook route
-│       └── application.yaml              # Multi-cluster GitOps Application spec
+│       ├── 01-namespace.yaml             # Namespace 'argocd'
+│       ├── 02-vpn-middleware.yaml        # Traefik IP allowlist
+│       ├── 03-helm-values.yaml           # Pinned ArgoCD Helm values
+│       ├── 04-ingress.yaml               # Traefik Ingress & Webhook route
+│       └── 05-application.yaml           # Multi-cluster GitOps Application
 │
-└── examples/                             # 💡 Example Pipelines
-    ├── .woodpecker-golang.yaml           # Go test & build pipeline
-    └── .woodpecker-nodejs.yaml           # Node.js test & build pipeline
+└── examples/                             # 💡 Pipeline Templates
+    ├── .woodpecker-golang.yaml           # Go build & test pipeline
+    └── .woodpecker-nodejs.yaml           # Node.js build & test pipeline
 ```
 
 ---
 
-## 📑 Table of Contents
+## 📑 Documentation Index
 
-1. [Architecture & Concepts](docs/01-architecture-and-concepts.md) — How Woodpecker CI and ArgoCD work together, execution models, and comparisons to Jenkins.
-2. [GitHub OAuth Setup](docs/02-github-oauth-setup.md) — 30-second guide to configuring the GitHub OAuth App.
-3. [HashiCorp Vault Integration](docs/03-vault-integration.md) — Storing RPC secrets, GitHub OAuth tokens, and injecting them into Kubernetes.
-4. [Installation & Deployment Guide](docs/04-installation-guide.md) — Complete copy-paste commands to install ArgoCD and Woodpecker CI.
-5. [Pipeline Syntax Guide](docs/05-pipeline-syntax-guide.md) — Reference for `.woodpecker.yaml` syntax, multi-stage pipelines, and Kaniko container builds.
-6. [User, Team & Admin Management](docs/06-user-and-admin-management.md) — `WOODPECKER_ADMIN`, `WOODPECKER_ORGS`, and promoting teammates.
-7. [Kubernetes Manifests](manifests/) — Production YAML templates for Helm and Traefik.
-8. [Pipeline Examples](examples/) — Example `.woodpecker.yaml` files for Node.js and Go.
+1. **[Quick Setup](docs/00-quick-setup.md)** — Deploy everything in 3 minutes.
+2. **[Architecture & Concepts](docs/01-architecture-and-concepts.md)** — How Woodpecker and ArgoCD collaborate.
+3. **[GitHub OAuth Setup](docs/02-github-oauth-setup.md)** — Connect your GitHub account to Woodpecker.
+4. **[HashiCorp Vault Integration](docs/03-vault-integration.md)** — Secure secret storage and injection.
+5. **[Installation Guide](docs/04-installation-guide.md)** — Complete step-by-step installation instructions.
+6. **[Pipeline Syntax Guide](docs/05-pipeline-syntax-guide.md)** — Write `.woodpecker.yaml` pipelines with Kaniko.
+7. **[User & Admin Management](docs/06-user-and-admin-management.md)** — Add team members and grant admin rights.
 
 ---
 
-## 🔒 Security Highlights
+## 🔒 Security Summary
 
-- **Rootless Container Builds:** Pipelines use Google's **Kaniko** executor. Pipelines never mount `/var/run/docker.sock` or require privileged Docker-in-Docker daemons.
-- **Least-Privilege CI:** Woodpecker CI never receives Kubernetes cluster admin credentials. It only commits the new image tag to Git. Only ArgoCD deploys to the cluster.
-- **Centralized Vault Storage:** All admin passwords, pre-computed bcrypt hashes, and RPC encryption secrets are persisted in HashiCorp Vault on `10.1.18.8`.
-- **Instant Webhooks:** Sub-second sync (< 1ms) between GitHub push events and ArgoCD GitOps reconciliations.
+* **Rootless Builds**: Pipelines use Google's Kaniko. No `/var/run/docker.sock` mount required.
+* **Least-Privilege**: Woodpecker CI cannot deploy to the cluster; it only updates Git. Only ArgoCD deploys to Kubernetes.
+* **Team Whitelist**: Only members of `unity-workspace-org` can log in (`WOODPECKER_ORGS`).
+* **Sub-Second GitOps**: GitHub webhook syncs ArgoCD in `<1ms`.

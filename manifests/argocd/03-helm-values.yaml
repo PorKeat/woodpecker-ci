@@ -1,0 +1,42 @@
+# ArgoCD Helm Values (Production)
+# Chart: argo/argo-cd (v3.5.5) | Namespace: argocd
+
+global:
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: "v3.5.5"
+
+configs:
+  params:
+    server.insecure: true
+    server.basehref: "/argocd"
+    server.rootpath: "/argocd"
+  cm:
+    url: "https://10.1.16.200/argocd"
+    admin.enabled: "true"
+  secret:
+    # Pre-computed bcrypt hash of: SJh7RxGCn0EAz5FRvSWLC_dYY-AA
+    argocdServerAdminPassword: "$2a$10$iOH60jL/wI.sukHDt117o.MGLMATFPzjdUCfVTbqCBScrMU9M7PKi"
+
+server:
+  replicas: 1
+  ingress:
+    enabled: false
+
+controller:
+  replicas: 1
+
+repoServer:
+  replicas: 1
+
+redis:
+  enabled: true
+  image:
+    repository: ecr-public.aws.com/docker/library/redis
+    tag: "8.6.4-alpine"
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false

@@ -1,6 +1,6 @@
 # Woodpecker CI Production Helm Values
-# Namespace: woodpecker (Node1 / Core Cluster)
 # Chart: woodpecker/woodpecker (3.7.5) | App Version: v3.19.0
+# Namespace: woodpecker
 
 server:
   enabled: true
