@@ -37,7 +37,7 @@ flowchart LR
     B -->|2. Quality Gates| C["✅ Lint & Test"]
     C -->|3. Kaniko Build| D["📦 GHCR Registry"]
     D -->|4. Bump Image Tag| E["📝 Helm GitOps Repo"]
-    E -->|5. Webhook (<1ms)| F["🔄 ArgoCD"]
+    E -->|5. Instant Webhook| F["🔄 ArgoCD"]
     F -->|6. Auto-Sync| G["☸️ Kubernetes Pods"]
 ```
 
