@@ -8,6 +8,8 @@ server:
   image:
     repository: woodpeckerci/woodpecker-server
     tag: v3.19.0
+  persistentVolume:
+    enabled: false
   podAnnotations:
     vault.hashicorp.com/agent-inject: 'true'
     vault.hashicorp.com/agent-vault-addr: 'https://10.1.18.8:8200'
@@ -26,12 +28,14 @@ server:
     WOODPECKER_SERVER_RPC_ADDR: :9000
     WOODPECKER_ADMIN: PorKeat
     WOODPECKER_GITHUB: 'true'
-    WOODPECKER_OPEN: 'false'
+    WOODPECKER_OPEN: 'true'
     WOODPECKER_ORGS: unity-workspace-org
+    WOODPECKER_DATABASE_DRIVER: postgres
+    WOODPECKER_DATABASE_DATASOURCE: postgres://woodpecker:X6cH39koXXFS1qECuyQTljIMaPSmRJeMQWmGWGvClI8GibQz8xb5eIq5i27exjmH@woodpecker-db-rw:5432/woodpecker?sslmode=disable
 
 agent:
   enabled: true
-  replicaCount: 1
+  replicaCount: 2
   image:
     repository: woodpeckerci/woodpecker-agent
     tag: v3.19.0
@@ -51,3 +55,4 @@ agent:
     WOODPECKER_BACKEND_K8S_NAMESPACE: woodpecker
     WOODPECKER_BACKEND_K8S_STORAGE_CLASS: longhorn
     WOODPECKER_BACKEND_K8S_VOLUME_SIZE: 10G
+    WOODPECKER_MAX_WORKFLOWS: '3'
